@@ -8,10 +8,10 @@
 /*
  * Tokenizer type.  You need to fill in the type as part of your implementation.
  */
-enum type{Oct, Dec, Hex, Float, Invalid};
+enum type{Oct, Dec, Hex, Float, Invalid}; //delcares enum type to differeniate the types of tokens
 
-struct TokenizerT_ {
-	char *fullString;
+struct TokenizerT_ { //definition of TokenizerT
+	char *fullString; //contains the fullString input
 };
 
 typedef struct TokenizerT_ TokenizerT;
@@ -30,7 +30,7 @@ typedef struct TokenizerT_ TokenizerT;
  * You need to fill in this function as part of your implementation.
  */
 
-TokenizerT *TKCreate( char * ts ) {
+TokenizerT *TKCreate( char * ts ) { 
 	 TokenizerT *tp = malloc(sizeof(TokenizerT)); //allocates memory to Tokenizer *tp
 	 tp->fullString = ts; //sets the value of fullString to the char * ts that was passed in 
 	 return tp; //returns the Tokenizer pointer that was created
@@ -60,7 +60,7 @@ void TKDestroy( TokenizerT * tk ) {
  */
 
 char *TKGetNextToken(TokenizerT * tk ) {
-  int count = 0;
+  int count = 0; //creates a counter
   char *temp = malloc(strlen((*tk).fullString) + 1); //largest possible size for the string + 1 for '\0'
   while(strlen((*tk).fullString) != 0 && !(isblank((*tk).fullString[0]) == 0)){ //if it is a blank space it keeps going
   	tk->fullString++; //moves on to next char
@@ -78,95 +78,99 @@ char *TKGetNextToken(TokenizerT * tk ) {
   return temp; //returns value of temp
 }
 
-enum type getType(char * token){
-	int num = 0;
-	int i;
-	for(i = 0; i < strlen(token); i++){
-		char c = token[i];
-		//printf("\nThe char is: %c and the num is %d", c, num);
-		switch(num){
+/* getType is the heart of this program. It is the brain that uses FSM
+ * to determine what type of token the inputed String is.
+ */
 
-			case 0:
-				if(c == '0'){
+enum type getType(char * token){
+	int num = 0; //creates the int num that will be used for switch statement
+	int i;	//declares variable int i for the for loop
+	for(i = 0; i < strlen(token); i++){ //loops for each character in the token
+		char c = token[i]; //sets the char in the token to c
+		//printf("\nThe char is: %c and the num is %d", c, num);
+		switch(num){ //switch statement based on the previous state
+
+			case 0: //first character only
+				if(c == '0'){ //if zero Token could be a Octal, the Decimal '0', or Hexadecimal
 					num = 1;
-				}else if(c >= '1' && c <= '9'){
+				}else if(c >= '1' && c <= '9'){	//if first digit is 1-9, Token is a decimal
 					num = 2;
-				}else{
+				}else{ //if Token is not Octal, Decimal, Hexadecimal, or Float it is an error
 					return Invalid; //Returns Invalid type
 				}
 				break;
 			
-			case 1:
-				if(c >= '0' && c <= '7'){
+			case 1: //means the first character was '0'
+				if(c >= '0' && c <= '7'){ //tests if the Token is Octal
 					num = 3;
-				}else if(c == 'x' || c == 'X'){
+				}else if(c == 'x' || c == 'X'){ //tests if the Token is Hexadecimal
 					num = 4;
-				}else if(c == '.'){
+				}else if(c == '.'){	//tests if the Token is a Float
 					num = 5;
-				}else{
+				}else{ //else Token is invalid
 					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			case 2:
-				if(isdigit(c)){
+				if(isdigit(c)){ //tests if the Token is still Decimal
 					//do nothing
-				}else if(c == '.'){
+				}else if(c == '.'){ //tests if the Token is a Float
 					num = 5;
-				}else if(c == 'e' || c == 'E'){
+				}else if(c == 'e' || c == 'E'){ //tests if Token is Float
 					num = 6;
-				}else{
+				}else{//else return error
 					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			case 3:
-				if(!(c >= '0' && c <= '7')){
+				if(!(c >= '0' && c <= '7')){ //tests if Token is still Octal
 					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			case 4:
-				if(!isxdigit(c)){
+				if(!isxdigit(c)){ //tests if Token is still Hexadecimal
 					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			case 5:
-				if(isdigit(c)){
+				if(isdigit(c)){ //tests if Token is still Float
 					//do nothing
-				}else if(c == 'e' || c == 'E'){
+				}else if(c == 'e' || c == 'E'){ //tests if Token is still Float
 					num = 6;
-				}else{
+				}else{//else return error
 					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			case 6:
-				if(c == '+' || c == '-' || isdigit(c)){
+				if(c == '+' || c == '-' || isdigit(c)){ //tests if Token is still Float
 					num = 7;
-				}else{
+				}else{//else return error
 					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			 case 7:
-			 	if(!isdigit(c)){
+			 	if(!isdigit(c)){//tests if Token is still Float
 			 		return Invalid; //Returns Invalid type
 			 	}
 			 	break;
 		}
 	}
+	if(num == 1 || num == 2)
+		return Dec; //Returns Decimal type
+
 	if(num == 3)
 		return Oct; //Returns Octal type
 
 	if(num == 4)
 		return Hex; //Returns Hexidemical type
 
-	if(num == 5 || num == 2 || num == 1)
-		return Dec; //Returns Decimal type
-
-	if(num == 7)
+	if(num == 5 || num == 7)
 		return Float; //Returns Float type
 
 	return Invalid; //Returns Invalid type
@@ -180,27 +184,27 @@ enum type getType(char * token){
 
 int main(int argc, char **argv) {
 	  char *var;
-	  if(argv[1] != NULL){
+	  if(argv[1] != NULL){ //tests if there is an input at the beginning
 		  	TokenizerT *t = TKCreate(argv[1]); //creates a new Token
 		  
-		  for(var = TKGetNextToken(t); var != 0 && strlen(var) != 0; var = TKGetNextToken(t)){
+		  for(var = TKGetNextToken(t); var != 0 && strlen(var) != 0; var = TKGetNextToken(t)){ //for loop for Tokens
 		  	//printf("%s\n", var);
-		  	enum type token = getType(var);
-		  	if(token == Oct){
-		  		printf("%s is of type Octal\n", var);
+		  	enum type token = getType(var); //gets the type of the Token
+		  	if(token == Oct){ 
+		  		printf("%s is of type Octal\n", var); //prints out Octal
 		  	}else if(token == Dec){
-		  		printf("%s is of type Decimal\n", var);
+		  		printf("%s is of type Decimal\n", var); //prints out Decimal
 		  	}else if(token == Hex){
-		  		printf("%s is of type Hexademical\n", var);
+		  		printf("%s is of type Hexademical\n", var); //prints out Hexadecimal
 		  	}else if(token == Float){
-		  		printf("%s is of type Float\n", var);
+		  		printf("%s is of type Float\n", var); //prints out Float
 		  	}else{
-		  		printf("[%s] is malformed!\n", var);
+		  		printf("[%s] is malformed!\n", var); //prints out Invalid
 		  	}
 		  }
-		TKDestroy(t);  
+		TKDestroy(t);  //frees memory allocated to Tokenizer
 	}else{
-		printf("You must provide an input!\n");
+		printf("You must provide an input!\n"); //returns error if no input
 	}
   return 0;
 }
