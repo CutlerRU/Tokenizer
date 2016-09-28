@@ -163,7 +163,7 @@ enum type getType(char * token){
 	if(num == 4)
 		return Hex; //Returns Hexidemical type
 
-	if(num == 5 || num == 2)
+	if(num == 5 || num == 2 || num == 1)
 		return Dec; //Returns Decimal type
 
 	if(num == 7)
