@@ -8,10 +8,11 @@
 /*
  * Tokenizer type.  You need to fill in the type as part of your implementation.
  */
-enum type{Oct, Dec, Hex, Float, Invalid}; //delcares enum type to differeniate the types of tokens
+enum type{Mal, Zero, Oct, Dec, Hex, Float, Invalid}; //delcares enum type to differeniate the types of tokens
 
 struct TokenizerT_ { //definition of TokenizerT
 	char *fullString; //contains the fullString input
+	enum type token; //type of the token
 };
 
 typedef struct TokenizerT_ TokenizerT;
@@ -59,122 +60,135 @@ void TKDestroy( TokenizerT * tk ) {
  * You need to fill in this function as part of your implementation.
  */
 
-char *TKGetNextToken(TokenizerT * tk ) {
-  int count = 0; //creates a counter
+char *TKGetNextToken(TokenizerT * tk ){
+  int i; //creates a counter
   char *temp = malloc(strlen((*tk).fullString) + 1); //largest possible size for the string + 1 for '\0'
-  while(strlen((*tk).fullString) != 0 && !(isblank((*tk).fullString[0]) == 0)){ //if it is a blank space it keeps going
-  	tk->fullString++; //moves on to next char
-  }
-  while(strlen((*tk).fullString) != 0 && isblank((*tk).fullString[0]) == 0){ //if it is not black it keeps going
-  	temp[count] = (*tk).fullString[0]; //replaces the value at temp[count] with the first char of fullString
-  	tk->fullString++; //moves on to next char
-  	count++; //adds one to the counter for the temp
-  }
-  if(strlen(temp) == 0){ //if the temp does not have anything stored, free it
-  	free(temp); //frees the memory that is no longer needed
-  	return 0; //returns zero meaning that the function is finished
-  }
-  temp[count] = '\0'; //delimited by '\0'
-  return temp; //returns value of temp
-}
-
-/* getType is the heart of this program. It is the brain that uses FSM
- * to determine what type of token the inputed String is.
- */
-
-enum type getType(char * token){
-	int num = 0; //creates the int num that will be used for switch statement
-	int i;	//declares variable int i for the for loop
-	for(i = 0; i < strlen(token); i++){ //loops for each character in the token
-		char c = token[i]; //sets the char in the token to c
-		//printf("\nThe char is: %c and the num is %d", c, num);
-		switch(num){ //switch statement based on the previous state
-
+  int num = 0; //sets the default case to 0
+  	for(i = 0; strlen(tk->fullString) > 0; i++){
+  		char c = (*tk).fullString[0];
+  		//printf("%d\n", num);
+  		switch(num){ //switch statement based on the previous state
 			case 0: //first character only
-				if(c == '0'){ //if zero Token could be a Octal, the Decimal '0', or Hexadecimal
+				if(isblank(c)){
+					num = 0;
+				}else if(c == '0'){ //if zero Token could be a Octal, the Decimal '0', or Hexadecimal
+					tk->token = Zero; //sets token to type Zero
 					num = 1;
 				}else if(c >= '1' && c <= '9'){	//if first digit is 1-9, Token is a decimal
+					tk->token = Dec; //sets token to type Dec
 					num = 2;
 				}else{ //if Token is not Octal, Decimal, Hexadecimal, or Float it is an error
-					return Invalid; //Returns Invalid type
+					tk->token = Invalid; //sets token to type Invalid
+					num = 8; //Returns Invalid type
 				}
 				break;
 			
 			case 1: //means the first character was '0'
-				if(c >= '0' && c <= '7'){ //tests if the Token is Octal
+				if(isblank(c)){
+					temp[i] = '\0';
+					return temp;
+				}else if(c >= '0' && c <= '7'){ //tests if the Token is Octal
+					tk->token = Oct;
 					num = 3;
 				}else if(c == 'x' || c == 'X'){ //tests if the Token is Hexadecimal
 					num = 4;
 				}else if(c == '.'){	//tests if the Token is a Float
+					tk->token = Mal;
 					num = 5;
 				}else{ //else Token is invalid
-					return Invalid; //Returns Invalid type
+					temp[i] = '\0';
+					return temp;
 				}
 				break;
 
 			case 2:
-				if(isdigit(c)){ //tests if the Token is still Decimal
+				if(isblank(c)){
+					temp[i] = '\0';
+					return temp;
+				}else if(isdigit(c)){ //tests if the Token is still Decimal
 					//do nothing
 				}else if(c == '.'){ //tests if the Token is a Float
+					tk->token = Mal;
 					num = 5;
 				}else if(c == 'e' || c == 'E'){ //tests if Token is Float
+					tk->token = Mal;
 					num = 6;
 				}else{//else return error
-					return Invalid; //Returns Invalid type
+					temp[i] = '\0';
+					return temp;
 				}
 				break;
 
 			case 3:
 				if(!(c >= '0' && c <= '7')){ //tests if Token is still Octal
-					return Invalid; //Returns Invalid type
+					temp[i] = '\0';
+					return temp;
 				}
 				break;
 
 			case 4:
 				if(!isxdigit(c)){ //tests if Token is still Hexadecimal
-					return Invalid; //Returns Invalid type
+					temp[i] = '\0';
+					return temp;
 				}
+				tk->token = Hex;
 				break;
 
 			case 5:
-				if(isdigit(c)){ //tests if Token is still Float
-					//do nothing
-				}else if(c == 'e' || c == 'E'){ //tests if Token is still Float
+				if(!isdigit(c) && tk->token != Float){ //tests if Token is still Float
+					temp[i] = '\0';
+					return temp;
+				}
+				tk->token = Float;
+				if(tk->token == Float && (c == 'e' || c == 'E')){ //tests if Token is still Float
+					tk->token = Mal;
 					num = 6;
-				}else{//else return error
-					return Invalid; //Returns Invalid type
 				}
 				break;
 
 			case 6:
-				if(c == '+' || c == '-' || isdigit(c)){ //tests if Token is still Float
+				if(c == '+' || c == '-'){ //tests if Token is still Float
 					num = 7;
-				}else{//else return error
-					return Invalid; //Returns Invalid type
+				}else if(isdigit(c)){
+					tk->token = Float;
+				}
+				else{//else return error
+					temp[i] = '\0';
+					return temp;
 				}
 				break;
 
 			 case 7:
 			 	if(!isdigit(c)){//tests if Token is still Float
-			 		return Invalid; //Returns Invalid type
+					temp[i] = '\0';
+					return temp;
+			 	}
+			 	tk->token = Float;
+			 	break;
+			 case 8:
+			 	tk->token = Invalid;
+			 	//printf("it got here");
+			 	if(isdigit(c) || isblank(c)){
+			 		temp[i] = '\0';
+			 		return temp; //Returns Invalid type
 			 	}
 			 	break;
 		}
+		if(!isblank(c)){
+			temp[i] = (*tk).fullString[0];
+		}else{
+			i--;
+		}
+		tk->fullString++; //moves to next char
 	}
-	if(num == 1 || num == 2)
-		return Dec; //Returns Decimal type
-
-	if(num == 3)
-		return Oct; //Returns Octal type
-
-	if(num == 4)
-		return Hex; //Returns Hexidemical type
-
-	if(num == 5 || num == 7)
-		return Float; //Returns Float type
-
-	return Invalid; //Returns Invalid type
+	if(strlen(temp) == 0){
+	  	free(temp); //frees the memory that is no longer needed
+	  	return 0; //returns zero meaning that the function is finished
+	}
+	temp[i] = '\0'; //adds '\0' delimiter
+	return temp; //returns the value of temp
 }
+
 /*
  * main will have a string argument (in argv[1]).
  * The string argument contains the tokens.
@@ -189,17 +203,25 @@ int main(int argc, char **argv) {
 		  
 		  for(var = TKGetNextToken(t); var != 0 && strlen(var) != 0; var = TKGetNextToken(t)){ //for loop for Tokens
 		  	//printf("%s\n", var);
-		  	enum type token = getType(var); //gets the type of the Token
-		  	if(token == Oct){ 
+		  	if(t->token == Zero){
+		  		printf("%s is of type Zero\n", var); //prints out type Zero
+		  	}else if(t->token == Oct){ 
 		  		printf("%s is of type Octal\n", var); //prints out Octal
-		  	}else if(token == Dec){
+		  	}else if(t->token == Dec){
 		  		printf("%s is of type Decimal\n", var); //prints out Decimal
-		  	}else if(token == Hex){
+		  	}else if(t->token == Hex){
 		  		printf("%s is of type Hexademical\n", var); //prints out Hexadecimal
-		  	}else if(token == Float){
+		  	}else if(t->token == Float){
 		  		printf("%s is of type Float\n", var); //prints out Float
+		  	}else if(t->token == Invalid){
+		  		int i;
+		  		printf("[");
+		  		for(i = 0; i < strlen(var)-1 && var[i] != '\0'; i++){
+		  			printf("0x%0x ", var[i]);
+		  		}
+		  		printf("0x%0x] is invalid input!\n", var[i]);
 		  	}else{
-		  		printf("[%s] is malformed!\n", var); //prints out Invalid
+		  		printf("%s is Malformed\n", var);
 		  	}
 		  }
 		TKDestroy(t);  //frees memory allocated to Tokenizer
